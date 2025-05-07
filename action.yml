@@ -1,0 +1,38 @@
+name: 'Upload artifact to custom API and await callback'
+description: |
+  Downloads a workflow artifact, sends it to a custom API with authentication,
+  then (optionally) polls the API until it reports success or failure.
+
+inputs:
+  artifact_name:
+    description: 'Name of the artifact to upload'
+    required: true
+  api_url:
+    description: 'Full URL of the upload endpoint (e.g. https://api.example.com/upload)'
+    required: true
+  api_token:
+    description: 'Bearer token to authenticate against the API'
+    required: true
+  poll:
+    description: 'true → wait for the API to finish and return a status'
+    required: false
+    default: 'true'
+  poll_interval_seconds:
+    description: 'Polling interval while waiting, in seconds'
+    required: false
+    default: '15'
+  poll_timeout_minutes:
+    description: 'Give up after this many minutes (0 = never timeout)'
+    required: false
+    default: '30'
+
+outputs:
+  result:
+    description: '"success" or "failure" (only if poll = true)'
+
+runs:
+  using: node20
+  main: dist/index.js      # compiled file checked‑in to repo
+branding:
+  icon: upload-cloud
+  color: blue

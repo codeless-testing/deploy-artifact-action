@@ -1,0 +1,21 @@
+{
+  "name": "deploy-artifact-action",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/index.ts",
+  "dependencies": {
+    "@actions/artifact": "^2.3.2",
+    "@actions/core": "^1.11.1",
+    "axios": "^1.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.17",
+    "esbuild": "^0.21.0",
+    "typescript": "^5.4.0"
+  },
+  "scripts": {
+    "build": "tsc && esbuild dist/index.js --bundle --platform=node --outfile=dist/index.js --allow-overwrite",
+    "prepare": "npm run build"
+  },
+  "private": false
+}
