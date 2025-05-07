@@ -1,7 +1,6 @@
 name: 'Upload artifact to custom API and await callback'
 description: |
-  Downloads a workflow artifact, sends it to a custom API with authentication,
-  then (optionally) polls the API until it reports success or failure.
+  Uploads a previously-built workflow artifact to your custom deployment API, then (optionally) polls the API until it reports succeeded or failed, allowing the job to pass or fail automatically based on your backend’s result.
 
 inputs:
   artifact_name:
