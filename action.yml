@@ -6,10 +6,7 @@ inputs:
   artifact_name:
     description: 'Name of the artifact to upload'
     required: true
-  api_url:
-    description: 'Full URL of the upload endpoint (e.g. https://api.example.com/upload)'
-    required: true
-  api_token:
+  token:
     description: 'Bearer token to authenticate against the API'
     required: true
   poll:

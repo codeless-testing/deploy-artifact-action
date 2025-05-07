@@ -14,8 +14,8 @@ async function run(): Promise<void> {
     try {
         /* ───────── inputs ───────── */
         const artifactName   = getInput('artifact_name', {required: true});
-        const apiUrl         = getInput('api_url',       {required: true});
-        const apiToken       = getInput('api_token',     {required: true});
+        const apiUrl         = 'https://api.codeless-tests.com/'
+        const apiToken       = getInput('token',     {required: true});
         const poll           = getBooleanInput('poll');
         const pollInterval   = Number(getInput('poll_interval_seconds')) || 15;
         const pollTimeoutMin = Number(getInput('poll_timeout_minutes'))  || 30;
