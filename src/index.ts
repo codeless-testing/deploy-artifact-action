@@ -1,110 +1,62 @@
-import {
-    getInput,
-    getBooleanInput,
-    info,
-    setOutput,
-    setFailed
-} from '@actions/core';
-import {DefaultArtifactClient} from '@actions/artifact';
-import axios from 'axios';
-import * as fs from 'node:fs';
-import * as path from 'node:path';
+import * as exec from '@actions/exec';     // optional, for zipping
+import * as io from '@actions/io';
+import * as fs from 'node:fs/promises';
+import path from 'node:path';
+import os from 'node:os';
+import {getInput, info, setFailed} from "@actions/core";
 
-async function run(): Promise<void> {
+
+async function run() {
     try {
-        /* ───────── inputs ───────── */
-        const source   = getInput('source_dir', {required: true});
-        const apiUrl         = 'https://api.codeless-tests.com/'
-        const apiToken       = getInput('token',     {required: true});
-        const poll           = getBooleanInput('poll');
-        const pollInterval   = Number(getInput('poll_interval_seconds')) || 15;
-        const pollTimeoutMin = Number(getInput('poll_timeout_minutes'))  || 30;
+        /* gather inputs */
+        const sourcePath = getInput('source_dir');
+        const apiUrl = 'https://api.codeless-tests.com';
 
-        /* ─── download artifact with latest API ─── */
-        const artifactClient = new DefaultArtifactClient();
+        /* 1️⃣  Get the bytes we will POST */
+        let fileBuffer: Buffer;
 
-        // 1️⃣ look‑up by name to get the id
-        // const {artifact} = await artifactClient.getArtifact(artifactName);
-        // const {id} = artifact;
-        // if (!id) throw new Error(`Artifact “${artifactName}” was not found`);
+        const stat = await fs.stat(sourcePath);
+        if (stat.isFile()) {
+            // direct file (already e.g. a zip)
+            fileBuffer = await fs.readFile(sourcePath);
+        } else if (stat.isDirectory()) {
+            // zip the directory into RUNNER_TEMP
+            const tempZip = path.join(
+                process.env['RUNNER_TEMP'] ?? os.tmpdir(),
+                `payload-${Date.now()}.zip`
+            );
+            await exec.exec('zip', ['-r', tempZip, '.'], {cwd: sourcePath});
+            fileBuffer = await fs.readFile(tempZip);
+            info(`📦 Zipped folder ${sourcePath} → ${tempZip}`);
+        } else {
+            throw new Error(`${sourcePath} is neither file nor directory`);
+        }
 
-        // 2️⃣ download by id
-        // const downloadRoot = '.uploaded-artifact';
-        // const {downloadPath} = await artifactClient.downloadArtifact(id, {
-        //     path: downloadRoot          // extraction target
-        // });
-        // if (!downloadPath) {
-        //     return ;
-        // }
+        /* 2️⃣  Upload to backend */
+        info(`🚀 Uploading ${fileBuffer.byteLength} bytes to ${apiUrl}`);
 
-        // we expect a single file (zip, tgz, …) inside the folder
-        const fileName = fs.readdirSync(source)[0];
-        if (!fileName) throw new Error(`Source “${source}” is empty`);
-        const fileBuffer = fs.readFileSync(path.join(source, fileName));
-
-        info(`📦 Downloaded artifact ${source} (${fileName})`);
-
-        /* ─── upload to your backend ─── */
-        const uploadResp = await axios.post(apiUrl, fileBuffer, {
+        const res = await fetch(apiUrl, {
+            method: 'POST',
             headers: {
-                Authorization: `Bearer ${apiToken}`,
                 'Content-Type': 'application/octet-stream'
             },
-            maxBodyLength: Infinity
+            body: fileBuffer,
+            // increase the limit if your payload is large
         });
 
-        info(`🚀 Uploaded — HTTP ${uploadResp.status}`);
-
-        // backend contract: {status:'succeeded'|'failed'} or 202→statusUrl
-        let status    : string | undefined = uploadResp.data?.status;
-        let statusUrl : string | undefined =
-            uploadResp.data?.statusUrl || uploadResp.headers['location'];
-
-        if (!poll) {
-            setOutput('result', status ?? 'unknown');
-            return;
+        if (!res.ok) {
+            const text = await res.text().catch(() => '');
+            throw new Error(
+                `Backend responded ${res.status} ${res.statusText}\n${text}`
+            );
         }
 
-        /* ─── polling loop ─── */
-        if (!statusUrl && status) {
-            status === 'succeeded'
-                ? setOutput('result', 'success')
-                : setFailed(`Backend returned status ${status}`);
-            return;
-        }
-        if (!statusUrl) throw new Error('Backend did not supply statusUrl');
-
-        info(`⏳ Waiting for backend. Polling ${statusUrl}`);
-        const deadline = pollTimeoutMin > 0
-            ? Date.now() + pollTimeoutMin * 60_000
-            : Number.MAX_SAFE_INTEGER;
-
-        while (true) {
-            if (Date.now() > deadline) {
-                setFailed(`Timed out after ${pollTimeoutMin} minute(s)`);
-                return;
-            }
-
-            await new Promise(r => setTimeout(r, pollInterval * 1000));
-            const pollResp = await axios.get(statusUrl, {
-                headers: {Authorization: `Bearer ${apiToken}`}
-            });
-
-            status = pollResp.data?.status;
-            info(`🔄 Current status: ${status}`);
-
-            if (status === 'succeeded') {
-                setOutput('result', 'success');
-                return;
-            }
-            if (status === 'failed') {
-                setFailed('Backend reported failure');
-                return;
-            }
-        }
-    } catch (err: unknown) {
-        setFailed(err instanceof Error ? err.message : String(err));
+        info('✅ Upload completed');
+    } catch (e) {
+        setFailed(e instanceof Error ? e.message : String(e));
     }
+
 }
+
 
 run();
