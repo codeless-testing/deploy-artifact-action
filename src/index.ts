@@ -13,7 +13,7 @@ import * as path from 'node:path';
 async function run(): Promise<void> {
     try {
         /* ───────── inputs ───────── */
-        const artifactName   = getInput('artifact_name', {required: true});
+        const source   = getInput('source_dir', {required: true});
         const apiUrl         = 'https://api.codeless-tests.com/'
         const apiToken       = getInput('token',     {required: true});
         const poll           = getBooleanInput('poll');
@@ -24,25 +24,25 @@ async function run(): Promise<void> {
         const artifactClient = new DefaultArtifactClient();
 
         // 1️⃣ look‑up by name to get the id
-        const {artifact} = await artifactClient.getArtifact(artifactName);
-        const {id} = artifact;
-        if (!id) throw new Error(`Artifact “${artifactName}” was not found`);
+        // const {artifact} = await artifactClient.getArtifact(artifactName);
+        // const {id} = artifact;
+        // if (!id) throw new Error(`Artifact “${artifactName}” was not found`);
 
         // 2️⃣ download by id
-        const downloadRoot = '.uploaded-artifact';
-        const {downloadPath} = await artifactClient.downloadArtifact(id, {
-            path: downloadRoot          // extraction target
-        });
-        if (!downloadPath) {
-            return ;
-        }
+        // const downloadRoot = '.uploaded-artifact';
+        // const {downloadPath} = await artifactClient.downloadArtifact(id, {
+        //     path: downloadRoot          // extraction target
+        // });
+        // if (!downloadPath) {
+        //     return ;
+        // }
 
         // we expect a single file (zip, tgz, …) inside the folder
-        const fileName = fs.readdirSync(downloadPath)[0];
-        if (!fileName) throw new Error(`Artifact “${artifactName}” is empty`);
-        const fileBuffer = fs.readFileSync(path.join(downloadPath, fileName));
+        const fileName = fs.readdirSync(source)[0];
+        if (!fileName) throw new Error(`Source “${source}” is empty`);
+        const fileBuffer = fs.readFileSync(path.join(source, fileName));
 
-        info(`📦 Downloaded artifact ${artifactName} (${fileName})`);
+        info(`📦 Downloaded artifact ${source} (${fileName})`);
 
         /* ─── upload to your backend ─── */
         const uploadResp = await axios.post(apiUrl, fileBuffer, {

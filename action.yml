@@ -3,7 +3,7 @@ description: |
   Uploads a previously-built workflow artifact to your custom deployment API.
 
 inputs:
-  artifact_name:
+  source_dir:
     description: 'Name of the artifact to upload'
     required: true
   token:
