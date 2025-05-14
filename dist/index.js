@@ -19839,7 +19839,7 @@ async function run() {
     }
     const formData = new FormData();
     const fileBlob = new Blob([fileBuffer], { type: "application/zip" });
-    formData.append("file", fileBlob, fileName);
+    formData.append("artifact", fileBlob, fileName);
     (0, core_1.info)(`\u{1F680} Uploading ${fileBuffer.byteLength} bytes to ${apiUrl}`);
     const res = await fetch(apiUrl, {
       method: "POST",

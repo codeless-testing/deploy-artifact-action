@@ -39,7 +39,7 @@ async function run() {
 
         // 👇 wrap Buffer in a Blob (or File) so the type matches
         const fileBlob = new Blob([fileBuffer], { type: 'application/zip' });
-        formData.append('file', fileBlob, fileName);   // filename is the 3rd arg
+        formData.append('artifact', fileBlob, fileName);   // filename is the 3rd arg
 
         /* 3️⃣  POST to backend */
         info(`🚀 Uploading ${fileBuffer.byteLength} bytes to ${apiUrl}`);
