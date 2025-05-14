@@ -10,15 +10,16 @@ async function run() {
     try {
         /* gather inputs */
         const sourcePath = getInput('source_dir');
-        const apiUrl = 'https://api.codeless-tests.com';
+        const apiUrl = 'https://api.codeless-tests.com/deploy/upload-zip';
 
         /* 1️⃣  Get the bytes we will POST */
         let fileBuffer: Buffer;
+        let fileName:   string;
 
         const stat = await fs.stat(sourcePath);
         if (stat.isFile()) {
-            // direct file (already e.g. a zip)
             fileBuffer = await fs.readFile(sourcePath);
+            fileName   = path.basename(sourcePath);
         } else if (stat.isDirectory()) {
             // zip the directory into RUNNER_TEMP
             const tempZip = path.join(
@@ -27,21 +28,24 @@ async function run() {
             );
             await exec.exec('zip', ['-r', tempZip, '.'], {cwd: sourcePath});
             fileBuffer = await fs.readFile(tempZip);
+            fileName   = path.basename(tempZip);
             info(`📦 Zipped folder ${sourcePath} → ${tempZip}`);
         } else {
             throw new Error(`${sourcePath} is neither file nor directory`);
         }
 
-        /* 2️⃣  Upload to backend */
-        info(`🚀 Uploading ${fileBuffer.byteLength} bytes to ${apiUrl}`);
+        /* 2️⃣  Build multipart/form-data */
+        const formData = new FormData();
 
+        // 👇 wrap Buffer in a Blob (or File) so the type matches
+        const fileBlob = new Blob([fileBuffer], { type: 'application/zip' });
+        formData.append('file', fileBlob, fileName);   // filename is the 3rd arg
+
+        /* 3️⃣  POST to backend */
+        info(`🚀 Uploading ${fileBuffer.byteLength} bytes to ${apiUrl}`);
         const res = await fetch(apiUrl, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/octet-stream'
-            },
-            body: fileBuffer,
-            // increase the limit if your payload is large
+            body:   formData,  // do NOT set Content-Type yourself!
         });
 
         if (!res.ok) {

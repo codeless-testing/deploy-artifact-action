@@ -6073,7 +6073,7 @@ var require_formdata = __commonJS({
     var { webidl } = require_webidl();
     var { Blob: Blob2, File: NativeFile } = require("buffer");
     var File = NativeFile ?? UndiciFile;
-    var FormData = class _FormData {
+    var FormData2 = class _FormData {
       constructor(form) {
         if (form !== void 0) {
           throw webidl.errors.conversionFailed({
@@ -6190,8 +6190,8 @@ var require_formdata = __commonJS({
         }
       }
     };
-    FormData.prototype[Symbol.iterator] = FormData.prototype.entries;
-    Object.defineProperties(FormData.prototype, {
+    FormData2.prototype[Symbol.iterator] = FormData2.prototype.entries;
+    Object.defineProperties(FormData2.prototype, {
       [Symbol.toStringTag]: {
         value: "FormData",
         configurable: true
@@ -6215,7 +6215,7 @@ var require_formdata = __commonJS({
       }
       return { name, value };
     }
-    module2.exports = { FormData };
+    module2.exports = { FormData: FormData2 };
   }
 });
 
@@ -6233,7 +6233,7 @@ var require_body = __commonJS({
       createDeferredPromise,
       fullyReadBody
     } = require_util2();
-    var { FormData } = require_formdata();
+    var { FormData: FormData2 } = require_formdata();
     var { kState } = require_symbols2();
     var { webidl } = require_webidl();
     var { DOMException: DOMException2, structuredClone } = require_constants2();
@@ -6462,7 +6462,7 @@ Content-Type: ${value.type || "application/octet-stream"}\r
           if (/multipart\/form-data/.test(contentType)) {
             const headers = {};
             for (const [key, value] of this.headers) headers[key.toLowerCase()] = value;
-            const responseFormData = new FormData();
+            const responseFormData = new FormData2();
             let busboy;
             try {
               busboy = new Busboy({
@@ -6522,7 +6522,7 @@ Content-Type: ${value.type || "application/octet-stream"}\r
             } catch (err) {
               throw Object.assign(new TypeError(), { cause: err });
             }
-            const formData = new FormData();
+            const formData = new FormData2();
             for (const [name, value] of entries) {
               formData.append(name, value);
             }
@@ -12929,7 +12929,7 @@ var require_response = __commonJS({
     } = require_constants2();
     var { kState, kHeaders, kGuard, kRealm } = require_symbols2();
     var { webidl } = require_webidl();
-    var { FormData } = require_formdata();
+    var { FormData: FormData2 } = require_formdata();
     var { getGlobalOrigin } = require_global();
     var { URLSerializer } = require_dataURL();
     var { kHeadersList, kConstruct } = require_symbols();
@@ -13225,7 +13225,7 @@ var require_response = __commonJS({
       ReadableStream
     );
     webidl.converters.FormData = webidl.interfaceConverter(
-      FormData
+      FormData2
     );
     webidl.converters.URLSearchParams = webidl.interfaceConverter(
       URLSearchParams
@@ -19821,27 +19821,30 @@ var core_1 = require_core();
 async function run() {
   try {
     const sourcePath = (0, core_1.getInput)("source_dir");
-    const apiUrl = "https://api.codeless-tests.com";
+    const apiUrl = "https://api.codeless-tests.com/deploy/upload-zip";
     let fileBuffer;
+    let fileName;
     const stat = await fs.stat(sourcePath);
     if (stat.isFile()) {
       fileBuffer = await fs.readFile(sourcePath);
+      fileName = node_path_1.default.basename(sourcePath);
     } else if (stat.isDirectory()) {
       const tempZip = node_path_1.default.join(process.env["RUNNER_TEMP"] ?? node_os_1.default.tmpdir(), `payload-${Date.now()}.zip`);
       await exec.exec("zip", ["-r", tempZip, "."], { cwd: sourcePath });
       fileBuffer = await fs.readFile(tempZip);
+      fileName = node_path_1.default.basename(tempZip);
       (0, core_1.info)(`\u{1F4E6} Zipped folder ${sourcePath} \u2192 ${tempZip}`);
     } else {
       throw new Error(`${sourcePath} is neither file nor directory`);
     }
+    const formData = new FormData();
+    const fileBlob = new Blob([fileBuffer], { type: "application/zip" });
+    formData.append("file", fileBlob, fileName);
     (0, core_1.info)(`\u{1F680} Uploading ${fileBuffer.byteLength} bytes to ${apiUrl}`);
     const res = await fetch(apiUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/octet-stream"
-      },
-      body: fileBuffer
-      // increase the limit if your payload is large
+      body: formData
+      // do NOT set Content-Type yourself!
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
